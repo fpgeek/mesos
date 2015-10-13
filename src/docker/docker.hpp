@@ -139,6 +139,10 @@ public:
       const std::string& image,
       bool force = false) const;
 
+  virtual process::Future<Nothing> rename(
+  		const std::string& oldName,
+			const std::string& newName) const;
+
   // Validate current docker version is not less than minVersion.
   virtual Try<Nothing> validateVersion(const Version& minVersion) const;
 

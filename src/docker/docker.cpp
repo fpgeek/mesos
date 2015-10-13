@@ -1074,3 +1074,24 @@ Future<Docker::Image> Docker::____pull(
 
   return Failure("Failed to find image");
 }
+
+Future<Nothing> Docker::rename(
+		const string& oldName,
+		const string& newName) const
+{
+	string cmd = path + " rename " + oldName + " " + newName;
+
+	VLOG(1) << "Running " << cmd;
+
+	Try<Subprocess> s = subprocess(
+			cmd,
+			Subprocess::PATH("/dev/null"),
+			Subprocess::PATH("/dev/null"),
+			Subprocess::PIPE());
+
+	if (s.isError()) {
+		return Failure(s.error());
+	}
+
+	return checkError(cmd, s.get());
+}

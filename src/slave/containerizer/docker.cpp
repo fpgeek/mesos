@@ -116,6 +116,26 @@ Option<ContainerID> parse(const Docker::Container& container)
   return None();
 }
 
+bool isStaleContainer(const Docker::Container& container) {
+	Option<string> name = None();
+
+	if (strings::startsWith(container.name, DOCKER_NAME_PREFIX)) {
+		name = strings::remove(
+				container.name, DOCKER_NAME_PREFIX, strings::PREFIX);
+	} else if (strings::startsWith(container.name, "/" + DOCKER_NAME_PREFIX)) {
+		name = strings::remove(
+				container.name, "/" + DOCKER_NAME_PREFIX, strings::PREFIX);
+	}
+
+	if (name.isSome()) {
+		if (!strings::contains(name.get(), DOCKER_NAME_SEPERATOR)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 
 Try<DockerContainerizer*> DockerContainerizer::create(
     const Flags& flags,
@@ -668,9 +688,12 @@ Future<Nothing> DockerContainerizerProcess::_recover(
     }
   }
 
+  ___recover(_containers);
+
   if (flags.docker_kill_orphans) {
     return __recover(_containers);
   }
+
 
   return Nothing();
 }
@@ -702,6 +725,30 @@ Future<Nothing> DockerContainerizerProcess::__recover(
   }
 
   return Nothing();
+}
+
+Future<Nothing> DockerContainerizerProcess::___recover(
+		const list<Docker::Container>& _containers)
+{
+	foreach (const Docker::Container& _container, _containers) {
+		VLOG(1) << "Checking if Docker container named '"
+						<< _container.name << "' is stale container";
+
+		if (isStaleContainer(_container)) {
+			Option<ContainerID> id = parse(_container);
+
+			// Ignore containers that Mesos didn't start.
+			if (id.isNone()) {
+				continue;
+			}
+
+			if (containers_.contains(id.get())) {
+				docker->rename(_container.id, containers_[id.get()]->name());
+			}
+		}
+	}
+
+	  return Nothing();
 }
 
 

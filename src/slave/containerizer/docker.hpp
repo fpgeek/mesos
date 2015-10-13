@@ -177,6 +177,9 @@ private:
   process::Future<Nothing> __recover(
       const std::list<Docker::Container>& containers);
 
+  process::Future<Nothing> ___recover(
+      const std::list<Docker::Container>& containers);
+
   // Starts the executor in a Docker container.
   process::Future<Docker::Container> launchExecutorContainer(
       const ContainerID& containerId,
