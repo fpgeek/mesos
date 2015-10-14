@@ -140,7 +140,7 @@ Try<Docker*> Docker::create(const string& path, bool validate)
   }
 #endif // __linux__
 
-  Try<Nothing> validateVersion = docker->validateVersion(Version(1, 0, 0));
+  Try<Nothing> validateVersion = docker->validateVersion(Version(1, 5, 0));
   if (validateVersion.isError()) {
     delete docker;
     return Error(validateVersion.error());
