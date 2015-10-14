@@ -77,19 +77,26 @@ const string DOCKER_NAME_SEPERATOR = ".";
 // Declared in header, see explanation there.
 const string DOCKER_SYMLINK_DIRECTORY = "docker/links";
 
+Option<string> parseContainerName(const Docker::Container& container)
+{
+	Option<string> name = None();
+
+	if (strings::startsWith(container.name, DOCKER_NAME_PREFIX)) {
+		name = strings::remove(
+				container.name, DOCKER_NAME_PREFIX, strings::PREFIX);
+	} else if (strings::startsWith(container.name, "/" + DOCKER_NAME_PREFIX)) {
+		name = strings::remove(
+				container.name, "/" + DOCKER_NAME_PREFIX, strings::PREFIX);
+	}
+
+	return name;
+}
+
 // Parse the ContainerID from a Docker container and return None if
 // the container was not launched from Mesos.
 Option<ContainerID> parse(const Docker::Container& container)
 {
-  Option<string> name = None();
-
-  if (strings::startsWith(container.name, DOCKER_NAME_PREFIX)) {
-    name = strings::remove(
-        container.name, DOCKER_NAME_PREFIX, strings::PREFIX);
-  } else if (strings::startsWith(container.name, "/" + DOCKER_NAME_PREFIX)) {
-    name = strings::remove(
-        container.name, "/" + DOCKER_NAME_PREFIX, strings::PREFIX);
-  }
+	Option<string> name = parseContainerName(container);
 
   if (name.isSome()) {
     // For Mesos version < 0.23.0, the docker container name format
@@ -116,16 +123,9 @@ Option<ContainerID> parse(const Docker::Container& container)
   return None();
 }
 
-bool isStaleContainer(const Docker::Container& container) {
-	Option<string> name = None();
-
-	if (strings::startsWith(container.name, DOCKER_NAME_PREFIX)) {
-		name = strings::remove(
-				container.name, DOCKER_NAME_PREFIX, strings::PREFIX);
-	} else if (strings::startsWith(container.name, "/" + DOCKER_NAME_PREFIX)) {
-		name = strings::remove(
-				container.name, "/" + DOCKER_NAME_PREFIX, strings::PREFIX);
-	}
+bool isStaleContainer(const Docker::Container& container)
+{
+	Option<string> name = parseContainerName(container);
 
 	if (name.isSome()) {
 		if (!strings::contains(name.get(), DOCKER_NAME_SEPERATOR)) {
@@ -556,7 +556,7 @@ Future<Nothing> DockerContainerizerProcess::recover(
     // order to remove any orphans and reconcile checkpointed executors.
     // TODO(tnachen): Remove this when we expect users to have already
     // upgraded to 0.23.
-    return docker->ps(true, DOCKER_NAME_PREFIX + state.get().id.value())
+    return docker->ps(true, DOCKER_NAME_PREFIX)
       .then(defer(self(), &Self::_recover, state.get(), lambda::_1));
   }
 
@@ -693,7 +693,6 @@ Future<Nothing> DockerContainerizerProcess::_recover(
   if (flags.docker_kill_orphans) {
     return __recover(_containers);
   }
-
 
   return Nothing();
 }
